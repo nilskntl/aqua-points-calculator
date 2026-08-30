@@ -1,0 +1,156 @@
+# =============================================================================
+# Release — version, changelog and GitHub Release, driven by Release Please.
+#
+# Two things happen in this one workflow, both on a push to main:
+#
+#   1. Ordinary merge to main → Release Please reads the Conventional Commits
+#      since the last tag and opens (or updates) a single "Release PR" that
+#      bumps the version everywhere and writes the CHANGELOG entry. No tag, no
+#      release yet — the PR is the proposal.
+#   2. The Release PR itself is merged → Release Please recognises its own
+#      commit, pushes the `vX.Y.Z` tag and publishes the GitHub Release with the
+#      changelog section as its body. Nothing else to approve.
+#
+# So the whole cycle is: land features on main, merge the Release PR when you
+# want to cut a version. `fix:` → patch, `feat:` → minor, `feat!:`/`BREAKING
+# CHANGE:` → major. `chore:`/`docs:`/`ci:` alone never produce a release.
+#
+# What gets bumped is declared in release-please-config.json, not here.
+#
+# On the run that actually cuts the release — and only then — a second job builds
+# the sdist and the wheel from the freshly pushed tag and uploads them to PyPI, so
+# `pip install aqua-points-calculator` tracks the GitHub Releases with no separate
+# manual step.
+#
+# Everything mutating runs under a GitHub App token, not GITHUB_TOKEN: resources
+# created by GITHUB_TOKEN do not trigger further workflows, so a Release PR opened
+# with it would never get its required `CI passed` check and could only be merged
+# by an admin overriding the ruleset. Under the App token the PR is a normal PR —
+# CI runs, the check reports, auto-merge works.
+#
+# Prerequisites (GitHub-side, not expressible in-repo):
+#   * A GitHub App (contents: write, pull requests: write, issues: write — Release
+#     Please labels its PR through the issues API — metadata: read), installed on
+#     this repository. Its identifier is the RELEASE_PLEASE_APP_CLIENT_ID repository
+#     *variable* (an App id is not a credential on its own); only the private key is
+#     a secret, RELEASE_PLEASE_APP_PRIVATE_KEY.
+#   * Settings → General → Pull Requests → "Allow auto-merge" enabled.
+#   * A PyPI trusted publisher for the project `aqua-points-calculator`, pointing at
+#     owner `nilskntl`, repository `aqua-points-calculator`, workflow
+#     `release-please.yml`, environment `pypi`. Trusted publishing exchanges the
+#     job's OIDC token for a short-lived upload token, so there is no PyPI API token
+#     to store or rotate. Before the first release the publisher is registered as a
+#     *pending* one — the project does not exist on PyPI yet; the first upload
+#     creates it.
+# =============================================================================
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# GITHUB_TOKEN needs nothing here — every mutation goes through the App token
+# minted in the job below, which carries its own installation permissions.
+permissions:
+  contents: read
+
+# One release run at a time, and never cancelled: a half-cut release (tag pushed,
+# GitHub Release missing) is worse than a queued run.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - name: Mint GitHub App token
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_PLEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+
+      - uses: googleapis/release-please-action@v5
+        id: rp
+        with:
+          token: ${{ steps.app.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Summarise
+        env:
+          CREATED: ${{ steps.rp.outputs.release_created }}
+          TAG: ${{ steps.rp.outputs.tag_name }}
+          PR: ${{ steps.rp.outputs.pr }}
+        run: |
+          set -euo pipefail
+          if [ "${CREATED:-}" = "true" ]; then
+            echo "::notice::Released ${TAG}."
+          elif [ -n "${PR:-}" ]; then
+            echo "::notice::Release PR is open and up to date."
+          else
+            echo "::notice::Nothing to release — no releasable commits since the last tag."
+          fi
+  # ---------------------------------------------------------------------------
+  # Publish to PyPI.
+  #
+  # Runs only on the push that Release Please recognised as its own Release PR
+  # merge, i.e. the run that pushed the tag — every other push to main leaves
+  # `release_created` unset and this job is skipped.
+  #
+  # It checks out the tag rather than the pushed ref: same commit today, but the
+  # tag is what the GitHub Release points at, so the artefact and the release
+  # notes cannot drift apart if the workflow is ever re-run.
+  #
+  # No credentials: `id-token: write` lets the job mint an OIDC token that PyPI
+  # trades for a short-lived upload token under the trusted publisher above. The
+  # `pypi` environment name is part of what PyPI verifies, so it must match the
+  # publisher configuration.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish to PyPI
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/aqua-points-calculator
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Build sdist and wheel
+        run: make build
+
+      # A version on PyPI is permanent — it can be yanked but never replaced. So
+      # verify that what hatchling stamped into the artefacts is the version the
+      # tag promises before anything is uploaded, rather than discovering a stale
+      # `0.0.0` afterwards.
+      - name: Verify the built version matches the tag
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          wheel=$(ls dist/*.whl)
+          built=$(basename "$wheel" | cut -d- -f2)
+          if [ "v$built" != "$TAG" ]; then
+            echo "::error::Built version $built does not match tag $TAG."
+            exit 1
+          fi
+          echo "::notice::Publishing aqua-points-calculator $built to PyPI."
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

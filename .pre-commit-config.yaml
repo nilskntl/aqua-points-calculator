@@ -1,0 +1,45 @@
+# =============================================================================
+# aqua-points-calculator — pre-commit hooks.
+#
+# Auto-format ONLY the staged files BEFORE the commit, so CI never fails on
+# formatting alone. The hooks invoke the repo's OWN toolchain (`uv run ruff`, the
+# same pinned Prettier `make format` uses) on exactly the staged paths — no
+# whole-repo sweep. Run `make install` once before committing, which you would
+# need anyway.
+#
+# CI keeps `format-check` + `lint` as the backstop for anyone bypassing the hook.
+# =============================================================================
+minimum_pre_commit_version: "3.2.0"
+default_install_hook_types: [pre-commit]
+
+repos:
+  - repo: local
+    hooks:
+      # Ruff covers import order (the `I` rule, which `ruff format` does NOT
+      # touch) and formatting in one go — matching `make format`.
+      - id: ruff-import-order
+        name: ruff — import order (staged)
+        entry: uv run ruff check --select I --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+      - id: ruff-format
+        name: ruff — format (staged)
+        entry: uv run ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      # Prettier covers what ruff does not: Markdown, YAML and JSON. Same pinned
+      # version and same invocation as `make format` (npx serves it from the npm
+      # cache after the first run), so the hook and CI cannot disagree. Prettier
+      # reads .prettierrc itself and honours .prettierignore even for paths handed
+      # to it explicitly, so machine-maintained files (CHANGELOG.md, the
+      # release-please manifest) stay untouched. --ignore-unknown skips anything it
+      # has no parser for.
+      - id: prettier
+        name: prettier — markdown/yaml/json (staged)
+        entry: npx --yes prettier@3.9.6 --write --log-level warn --ignore-unknown
+        language: system
+        types_or: [markdown, yaml, json]
+        require_serial: true

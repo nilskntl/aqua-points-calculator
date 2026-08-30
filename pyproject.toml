@@ -1,0 +1,150 @@
+[project]
+name = "aqua-points-calculator"
+version = "0.0.0"
+description = "World Aquatics point-score calculator for swimming performances — usable as a library, a CLI and a FastAPI service."
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Nils Knittel" }]
+
+# The PyPI project page is rendered from README.md — the same document the
+# repository shows, so there is one description to keep current, not two.
+readme = "README.md"
+keywords = ["swimming", "points", "fina-points", "world-aquatics", "scoring", "pydantic"]
+
+# No "License :: ..." classifier here on purpose: the license is declared as an
+# SPDX expression above (PEP 639), and PyPI rejects a distribution that carries
+# both.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Framework :: FastAPI",
+    "Framework :: Pydantic :: 2",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    # The scoring core itself has no third-party runtime dependency beyond pydantic:
+    # the point formula and the time parsing are pure standard library. pydantic
+    # carries the data schema (validation + JSON Schema + serialisation), which is
+    # what other services consume — the schema, not the Python objects.
+    "pydantic>=2.13.4",
+    # The shipped base-time tables are YAML. They are data files rather than
+    # Python literals so they stay reviewable in a diff and regenerable from the
+    # official publications by tools/generate_base_times.py.
+    "pyyaml>=6.0.2",
+]
+
+# The HTTP surface is optional: a consumer that only imports
+# `aqua_points_calculator.points` (or runs the CLI) must not have to pull in FastAPI
+# and uvicorn. `uv sync --extra api` and the container image install it; the library
+# install stays lean.
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.52.0",
+]
+
+[project.scripts]
+aqua-points-calculator = "aqua_points_calculator.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/nilskntl/aqua-points-calculator"
+Repository = "https://github.com/nilskntl/aqua-points-calculator"
+Issues = "https://github.com/nilskntl/aqua-points-calculator/issues"
+Changelog = "https://github.com/nilskntl/aqua-points-calculator/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aqua_points_calculator"]
+
+# The YAML base-time tables need no force-include: hatchling ships every
+# non-Python file inside a listed package directory, and tests/unit/test_data.py
+# asserts the wheel's tables are all reachable.
+
+# Listed explicitly rather than left to hatchling's "everything not VCS-ignored"
+# default, so what ships in the sdist is a decision, not a side effect of the
+# working tree. Tests and docs are in: they are what makes a source release
+# reviewable and reproducible.
+[tool.hatch.build.targets.sdist]
+include = [
+    "aqua_points_calculator",
+    "tests",
+    "docs",
+    "tools",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "httpx>=0.28.1",
+    "mypy>=2.3.0",
+    "ruff>=0.16.0",
+    "pip-audit>=2.10.1",
+    "types-pyyaml>=6.0.12.20260815",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI uses callables (Depends/File/Query/…) as default argument values by design —
+# these are not the mutable-default antipattern B008 targets.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Query",
+    "fastapi.Body",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.UploadFile",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_return_any = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=aqua_points_calculator --cov-report=term-missing --strict-markers"
+markers = [
+    "integration: full-wiring tests (FastAPI test client / CLI end-to-end); deselected by 'make test', run by 'make test-it'",
+]
+
+# Coverage gate.
+# fail_under is enforced on the full run ('make test-it'); 'make test' passes --no-cov.
+[tool.coverage.run]
+branch = true
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]

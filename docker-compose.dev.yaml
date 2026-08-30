@@ -1,0 +1,33 @@
+# =============================================================================
+# aqua-points-calculator — development overlay.
+#
+# Layered on top of docker-compose.yaml (`make up-dev`): mounts the sources into
+# the container and runs uvicorn with --reload, so an edit is live without a
+# rebuild. The read-only root filesystem of the base file is lifted here because
+# the reloader writes bytecode caches.
+# =============================================================================
+
+services:
+  aqua-points-calculator:
+    build:
+      context: .
+      target: builder
+    command:
+      # Full path: only the runtime stage puts /app/.venv/bin on PATH, and this
+      # overlay runs the builder stage.
+      - /app/.venv/bin/uvicorn
+      - aqua_points_calculator.api:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      # The image installs aqua_points_calculator as a wheel (--no-editable), which
+      # would shadow the bind mount below; /app first on sys.path makes the mounted
+      # sources win, so --reload actually serves the edit.
+      PYTHONPATH: /app
+    volumes:
+      - ./aqua_points_calculator:/app/aqua_points_calculator:ro
+    read_only: false
