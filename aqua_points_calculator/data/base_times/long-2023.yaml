@@ -1,0 +1,68 @@
+# World Aquatics base times — LCM (50m) 2023.
+#
+# A base time is the world record that stood approved on the START of the
+# validity period, so this table is a snapshot of that moment and does not
+# change when a record falls mid-season. Long course and short course run on
+# different calendars, which is why each has its own season numbering.
+#
+# Generated from the official World Aquatics publication named in `source`.
+# Every value was cross-checked against the second column that publication
+# prints for it; do not hand-edit.
+
+course: long
+season: 2023
+valid_from: 2023-01-01
+valid_until: 2023-12-31
+source:
+  title: World Aquatics Points - Base Times SCM 2022 and LCM 2023
+  url: https://resources.fina.org/fina/document/2023/01/16/f1b09b6f-ca69-4d68-ac4c-62bb2f3919a7/World-Aquatics-Points-Base-times-SCM-2022-and-LCM-2023.pdf
+
+records:
+  - { distance: 50, stroke: freestyle, gender: male, time: "20.91" }
+  - { distance: 50, stroke: freestyle, gender: female, time: "23.67" }
+  - { distance: 100, stroke: freestyle, gender: male, time: "46.86" }
+  - { distance: 100, stroke: freestyle, gender: female, time: "51.71" }
+  - { distance: 200, stroke: freestyle, gender: male, time: "1:42.00" }
+  - { distance: 200, stroke: freestyle, gender: female, time: "1:52.98" }
+  - { distance: 400, stroke: freestyle, gender: male, time: "3:40.07" }
+  - { distance: 400, stroke: freestyle, gender: female, time: "3:56.40" }
+  - { distance: 800, stroke: freestyle, gender: male, time: "7:32.12" }
+  - { distance: 800, stroke: freestyle, gender: female, time: "8:04.79" }
+  - { distance: 1500, stroke: freestyle, gender: male, time: "14:31.02" }
+  - { distance: 1500, stroke: freestyle, gender: female, time: "15:20.48" }
+
+  - { distance: 50, stroke: backstroke, gender: male, time: "23.71" }
+  - { distance: 50, stroke: backstroke, gender: female, time: "26.98" }
+  - { distance: 100, stroke: backstroke, gender: male, time: "51.60" }
+  - { distance: 100, stroke: backstroke, gender: female, time: "57.45" }
+  - { distance: 200, stroke: backstroke, gender: male, time: "1:51.92" }
+  - { distance: 200, stroke: backstroke, gender: female, time: "2:03.35" }
+
+  - { distance: 50, stroke: breaststroke, gender: male, time: "25.95" }
+  - { distance: 50, stroke: breaststroke, gender: female, time: "29.30" }
+  - { distance: 100, stroke: breaststroke, gender: male, time: "56.88" }
+  - { distance: 100, stroke: breaststroke, gender: female, time: "1:04.13" }
+  - { distance: 200, stroke: breaststroke, gender: male, time: "2:05.95" }
+  - { distance: 200, stroke: breaststroke, gender: female, time: "2:18.95" }
+
+  - { distance: 50, stroke: butterfly, gender: male, time: "22.27" }
+  - { distance: 50, stroke: butterfly, gender: female, time: "24.43" }
+  - { distance: 100, stroke: butterfly, gender: male, time: "49.45" }
+  - { distance: 100, stroke: butterfly, gender: female, time: "55.48" }
+  - { distance: 200, stroke: butterfly, gender: male, time: "1:50.34" }
+  - { distance: 200, stroke: butterfly, gender: female, time: "2:01.81" }
+
+  - { distance: 200, stroke: medley, gender: male, time: "1:54.00" }
+  - { distance: 200, stroke: medley, gender: female, time: "2:06.12" }
+  - { distance: 400, stroke: medley, gender: male, time: "4:03.84" }
+  - { distance: 400, stroke: medley, gender: female, time: "4:26.36" }
+
+  - { distance: 100, stroke: freestyle, gender: male, legs: 4, time: "3:08.24" }
+  - { distance: 100, stroke: freestyle, gender: female, legs: 4, time: "3:29.69" }
+  - { distance: 100, stroke: freestyle, gender: mixed, legs: 4, time: "3:19.38" }
+  - { distance: 200, stroke: freestyle, gender: male, legs: 4, time: "6:58.55" }
+  - { distance: 200, stroke: freestyle, gender: female, legs: 4, time: "7:39.29" }
+
+  - { distance: 100, stroke: medley, gender: male, legs: 4, time: "3:26.78" }
+  - { distance: 100, stroke: medley, gender: female, legs: 4, time: "3:50.40" }
+  - { distance: 100, stroke: medley, gender: mixed, legs: 4, time: "3:37.58" }

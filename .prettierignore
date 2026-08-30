@@ -1,0 +1,30 @@
+# =============================================================================
+# Prettier scope — the structured formats ruff does not touch (Markdown, YAML,
+# JSON). Everything listed here is either not source, or is written by a machine
+# that owns its bytes.
+# =============================================================================
+
+# --- Not source ------------------------------------------------------------
+.venv/
+dist/
+htmlcov/
+node_modules/
+
+# --- Tooling caches, which carry .md / .json files of their own ------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Machine-maintained ----------------------------------------------------
+# release-please rewrites both on every release PR; reformatting them would put
+# the formatter and the release bot in a loop over the same lines.
+CHANGELOG.md
+.release-please-manifest.json
+
+# --- Reference data: byte-owned by its generator or by the source document ---
+# The shipped base-time tables are written by tools/generate_base_times.py and
+# say so in their own header ("do not hand-edit"); a formatter is a hand edit.
+# Test fixtures are byte-exact reference data for the same reason — see the
+# matching rule in .editorconfig.
+aqua_points_calculator/data/base_times/
+tests/fixtures/

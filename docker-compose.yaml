@@ -1,0 +1,46 @@
+# =============================================================================
+# aqua-points-calculator — local stack.
+#
+# One service, because that is all there is: the calculator is stateless, has no
+# database, no cache and no broker. The compose file exists so the service is
+# started the same way here as anywhere else, and so another stack can pull it
+# in with `extends` or an `include`.
+#
+# Driven by the Makefile: `make up`, `make down`, `make logs`, `make ps`.
+# =============================================================================
+name: aqua-points-calculator
+
+services:
+  aqua-points-calculator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aqua-points-calculator:local
+    container_name: aqua-points-calculator
+    restart: unless-stopped
+    environment:
+      # Consumed by aqua_points_calculator.api.app.configure_logging.
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      # Host port overridable so the container does not fight another service
+      # for 8000; the container port is fixed, matching the Dockerfile CMD.
+      - "${AQUA_POINTS_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    # The calculator only ever reads its request body, so it needs no write access
+    # to its own filesystem and no extra capabilities.
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

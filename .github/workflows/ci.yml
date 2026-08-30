@@ -1,0 +1,96 @@
+# =============================================================================
+# CI — every check runs through the Makefile, so `make` locally and CI cannot
+# diverge.
+#
+# Pull requests targeting main only. It deliberately does NOT run on push to
+# main: branch protection requires this workflow to pass before a PR can merge,
+# so re-running the identical commit on main would validate nothing new.
+#
+# Branch protection requires exactly one check from this file — `CI passed` (the
+# `ci-ok` job). Add or rename the real work below without touching the ruleset.
+# =============================================================================
+name: CI
+
+on:
+  pull_request:
+    branches: [main] # only PRs onto main, not PRs onto feature branches
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: aqua-points-calculator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version-file: .python-version
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install (uv sync)
+        run: make install
+
+      # ruff plus Prettier (Markdown / YAML / JSON). Prettier is fetched by npx at
+      # the version pinned in the Makefile; the runner image ships Node, so no
+      # setup-node step is needed.
+      - name: Format check
+        run: make format-check
+
+      - name: Lint
+        run: make lint
+
+      - name: Typecheck
+        run: make typecheck
+
+      - name: Test + coverage
+        run: make test-it
+
+      - name: Audit
+        run: make audit
+
+  image:
+    name: image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # The single required status check. Branch protection requires THIS job, never
+  # the individual ones — so jobs can be added, split or renamed above without
+  # editing the ruleset. Nothing here is conditional, so every job must actually
+  # succeed: a skip means something went wrong upstream, not "nothing to do".
+  # ---------------------------------------------------------------------------
+  ci-ok:
+    name: CI passed
+    if: always()
+    needs: [build, image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every CI job succeeded
+        env:
+          RESULTS: ${{ needs.build.result }} ${{ needs.image.result }}
+        run: |
+          set -euo pipefail
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::A CI job ended with '$r'."
+              exit 1
+            fi
+          done
+          echo "All CI jobs passed."
