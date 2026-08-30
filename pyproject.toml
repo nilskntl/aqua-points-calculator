@@ -1,6 +1,6 @@
 [project]
 name = "aqua-points-calculator"
-version = "0.0.0"
+version = "1.0.0"
 description = "World Aquatics point-score calculator for swimming performances — usable as a library, a CLI and a FastAPI service."
 requires-python = ">=3.12"
 license = "MIT"
