@@ -97,4 +97,4 @@ def score_for(event: Event, time: str | int, season: int | None = None) -> Score
 try:
     __version__ = version("aqua-points-calculator")
 except PackageNotFoundError:  # pragma: no cover - only when running from a bare checkout
-    __version__ = "0.0.0"
+    __version__ = "1.0.0"
